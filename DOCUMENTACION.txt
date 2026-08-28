@@ -68,32 +68,83 @@ poligonossur/PoligonosEmbalsesSur18-10.shp
 
 3. DATOS FALTANTES EN EL REPOSITORIO (IMAGENES SENTINEL-2)
 --------------------------------------------------------------
-El repositorio original NO contiene ninguna imagen satelital: los
+El repositorio original NO contenia ninguna imagen satelital: los
 notebooks leen rasters que no estan versionados en git (probablemente
-por su peso). Para poder correr el pipeline hay que agregar, respetando
-las rutas relativas usadas en el codigo (relativas a la raiz de
-Embalses_V2):
+por su peso). Para poder correr el pipeline hay que tener disponibles,
+respetando las rutas relativas usadas en el codigo (relativas a la raiz
+del repo):
 
-    Imagenes enero 2021/Norte_20mTODOS.tif
+    Imagenes enero 2021/Norte_20mTODOS.tif   [RESUELTO, ver abajo]
         Stack de bandas Sentinel-2 (resolucion 20m) de la zona Norte,
         usado por Presentacion1.ipynb.
-    Imagenes enero 2021/Sur_20mTODOS.tif
+    Imagenes enero 2021/Sur_20mTODOS.tif     [RESUELTO, ver abajo]
         Idem para la zona Sur, usado por Estadistica_ROIs.ipynb.
     2022/Stack/stack2022Norte.tif y 2022/Stack/stack2022Sur.tif
         (el nombre exacto depende de la variable "zona" en el notebook,
         ej. stack2022Norte.tif / stack2022Sur.tif)
         Stack Sentinel-2 2022 (bandas 1 a 12), usado por RandomForest.ipynb
-        y Presentacion2.ipynb.
+        y Presentacion2.ipynb. PENDIENTE.
     2022/molinos/StackRecortado_Molinos_B1a8_11_12.tif
         Recorte del stack sobre el embalse Los Molinos, usado por
-        RandomForest.ipynb para un caso de estudio particular.
+        RandomForest.ipynb para un caso de estudio particular. PENDIENTE.
     2022/molinos/TrainingMolinosPoligonos.shp
         Poligonos de entrenamiento para el caso Los Molinos, usado junto
-        al raster anterior.
+        al raster anterior. PENDIENTE.
 
-Estas carpetas no se crearon vacias dentro de Embalses_V2 para no
-ensuciar el repo con directorios sin contenido; hay que crearlas al
-agregar las imagenes correspondientes.
+Estas carpetas no se crearon vacias en el repo para no ensuciarlo con
+directorios sin contenido; hay que crearlas al agregar las imagenes
+correspondientes.
+
+3.1 IMAGENES DE ENERO 2021 DESCARGADAS (28/08/2026)
+-----------------------------------------------------
+Se descargaron y generaron los dos stacks "Imagenes enero 2021/
+Norte_20mTODOS.tif" y "Sur_20mTODOS.tif" a partir de datos publicos de
+Sentinel-2 L2A (COGs en el bucket abierto de AWS
+"sentinel-cogs.s3.us-west-2.amazonaws.com", catalogo STAC
+earth-search.aws.element84.com/v1, sin necesidad de autenticacion).
+
+Como se identificaron la escena y la tesela correctas:
+    - En Estadistica_ROIs.ipynb hay una linea comentada que menciona
+      explicitamente el producto original: tesela MGRS "T20JLL", fecha
+      de captura "20210117" (17 de enero de 2021).
+    - Se armo el bounding box de los embalses de la zona Norte (Cruz
+      del Eje, El Cajon, San Roque) y de la zona Sur (Cerro Pelado, Los
+      Molinos, Rio Tercero, La Vina, Usina 3, Piedra Mora, Arroyo Corto)
+      a partir de "geometrias-corregidas/Embalses unificado.shp".
+    - Se cruzaron esos bounding boxes contra las teselas Sentinel-2
+      disponibles el 17/01/2021 (via STAC): los embalses del Norte caen
+      en la tesela 20JLL (confirma la linea comentada del notebook) y
+      los del Sur caen en la tesela 20HLK. Ambas escenas tienen
+      cobertura de nubes practicamente nula ese dia (<0.2%).
+
+Como se generaron los GeoTIFF:
+    - Para cada zona se recortaron directamente sobre el servidor (HTTP
+      range requests via /vsicurl/, sin descargar la tesela completa de
+      ~110x110 km) las 11 bandas: B01, B02, B03, B04, B05, B06, B07,
+      B08, B09, B11 y B12, con gdalwarp: reproyeccion/resampleo a 20 m
+      de resolucion (bilinear), recorte al area de cada zona (bounding
+      box de sus embalses + 1500 m de margen) y mismo CRS que el resto
+      del repo (EPSG:32720).
+    - Las 11 bandas se apilaron en un unico GeoTIFF por zona (uint16,
+      comprimido DEFLATE) con rasterio, en el mismo orden y con los
+      mismos nombres de banda que usa "bandas" en los notebooks
+      (Banda 1, Azul, Verde, Rojo, Banda 5, Banda 6, Banda 7, NIR,
+      Banda 9, SWIR 1, SWIR 2).
+    - Se verifico que al recortar cada stack con
+      "Embalses unificado.shp" (rasterio.mask.mask) se obtienen pixeles
+      validos con valores de reflectancia razonables (rango ~13-3600,
+      recordar dividir por 10000 como hace delNone() en funciones.py).
+
+Ubicacion final: los archivos pesan (99 MB Norte / 170 MB Sur) y se
+guardaron fuera del repositorio git, en el disco externo:
+    /media/javi/KINGSTON/Sentinel_Cordoba/Imagenes enero 2021/
+        Norte_20mTODOS.tif
+        Sur_20mTODOS.tif
+En la raiz del repo se dejo un symlink "Imagenes enero 2021" apuntando
+a esa carpeta del disco externo, para que los notebooks los encuentren
+con la ruta relativa que ya usan. El symlink no se versiona en git (no
+tiene sentido versionar un link a un disco externo); si se mueve el
+repo a otra maquina hay que recrearlo o copiar los .tif localmente.
 
 4. DEPENDENCIAS ADICIONALES DETECTADAS (no listadas en dependencies.yml)
 -----------------------------------------------------------------------
