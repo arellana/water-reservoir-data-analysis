@@ -1,0 +1,124 @@
+DOCUMENTACION - Embalses_V2
+============================
+Version limpia y reorganizada del repositorio EmbalsesCordoba, conteniendo
+unicamente el codigo y los datos vectoriales que el algoritmo utiliza
+efectivamente para correr. No incluye graficos de salida ni archivos
+sueltos sin referencias en el codigo.
+
+1. ESTRUCTURA DE CARPETAS Y SU ROL EN EL ALGORITMO
+---------------------------------------------------
+
+funciones.py
+    Funciones auxiliares compartidas por todos los notebooks:
+    - nequalize(): normaliza/equaliza una banda o un stack de bandas por
+      percentiles (recorta valores fuera de [p, 100-p] a [0,1]).
+    - plot_rgb(): compone y grafica una combinacion de bandas (ej. RGB o
+      falso color) aplicando nequalize().
+    - delNone(): descarta pixeles de nodata y normaliza por el factor de
+      reflectancia (10000, propio de Sentinel-2 Nivel 2A).
+    - guardar_GTiff(): escribe una matriz (2D o 3D) a un GeoTIFF con su
+      CRS, transform y nombres de banda.
+
+geometrias-corregidas/Embalses unificado.shp (+ .dbf/.shx/.prj/.qpj)
+    Poligono unico con el contorno de todos los embalses de la provincia.
+    Se usa en los 4 notebooks para recortar (mask) la imagen satelital al
+    area de cada embalse antes de cualquier calculo de indices o
+    clasificacion.
+
+poligonosnorte/PoligonosEmbalses18-10.shp
+    Poligonos individuales de los embalses de la zona Norte (Cruz del
+    Eje, El Cajon, San Roque, etc.), usados para separar estadisticas
+    por embalse dentro de la zona norte.
+
+poligonossur/PoligonosEmbalsesSur18-10.shp
+    Igual que el anterior pero para la zona Sur (Rio Tercero, Los
+    Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, Allende, Usina 3,
+    etc.).
+
+2022/Poligonos/pol180222.shp, pol180222-2.shp, polCruz.shp, polCruz-2.shp
+    Poligonos de entrenamiento (ROIs dibujadas a mano) usados por
+    Presentacion2.ipynb como muestras etiquetadas para el clasificador
+    supervisado (arbol de decision / Random Forest) y para comparar
+    firmas espectrales entre coberturas (agua, vegetacion, etc.).
+
+2. LOGICA GENERAL DEL PIPELINE (comun a los notebooks)
+--------------------------------------------------------
+    1. Se abre una imagen Sentinel-2 (stack multibanda, ya recortado y
+       apilado) con rasterio.
+    2. Se recorta (rasterio.mask.mask) la imagen usando el poligono de
+       "Embalses unificado.shp" para quedarse solo con pixeles de agua
+       de embalses.
+    3. Sobre esa mascara se calculan:
+       - Indices opticos: NDVI, NDWI.
+       - Componentes Tasseled Cap: Brightness, Greeness, Wetness.
+       - Firmas espectrales promedio por embalse (usando los poligonos
+         individuales de poligonosnorte/poligonossur).
+    4. (Presentacion1) Se aplica clustering no supervisado (KMeans, k-POD
+       para datos con faltantes) sobre los pixeles de agua para explorar
+       agrupamientos naturales del estado trofico.
+    5. (Presentacion2 / RandomForest) Se etiquetan pixeles de entrenamiento
+       con los poligonos de 2022/Poligonos/*.shp y se entrena un
+       clasificador supervisado (arbol de decision, Random Forest) para
+       predecir clases de cobertura/estado trofico, evaluando con matriz
+       de confusion, accuracy y kappa (y validacion cruzada
+       StratifiedKFold).
+    6. (Estadistica_ROIs) Se generan estadisticas descriptivas y
+       distribuciones (histogramas) de los indices e componentes por
+       embalse, para caracterizar el estado trofico de cada uno.
+
+3. DATOS FALTANTES EN EL REPOSITORIO (IMAGENES SENTINEL-2)
+--------------------------------------------------------------
+El repositorio original NO contiene ninguna imagen satelital: los
+notebooks leen rasters que no estan versionados en git (probablemente
+por su peso). Para poder correr el pipeline hay que agregar, respetando
+las rutas relativas usadas en el codigo (relativas a la raiz de
+Embalses_V2):
+
+    Imagenes enero 2021/Norte_20mTODOS.tif
+        Stack de bandas Sentinel-2 (resolucion 20m) de la zona Norte,
+        usado por Presentacion1.ipynb.
+    Imagenes enero 2021/Sur_20mTODOS.tif
+        Idem para la zona Sur, usado por Estadistica_ROIs.ipynb.
+    2022/Stack/stack2022Norte.tif y 2022/Stack/stack2022Sur.tif
+        (el nombre exacto depende de la variable "zona" en el notebook,
+        ej. stack2022Norte.tif / stack2022Sur.tif)
+        Stack Sentinel-2 2022 (bandas 1 a 12), usado por RandomForest.ipynb
+        y Presentacion2.ipynb.
+    2022/molinos/StackRecortado_Molinos_B1a8_11_12.tif
+        Recorte del stack sobre el embalse Los Molinos, usado por
+        RandomForest.ipynb para un caso de estudio particular.
+    2022/molinos/TrainingMolinosPoligonos.shp
+        Poligonos de entrenamiento para el caso Los Molinos, usado junto
+        al raster anterior.
+
+Estas carpetas no se crearon vacias dentro de Embalses_V2 para no
+ensuciar el repo con directorios sin contenido; hay que crearlas al
+agregar las imagenes correspondientes.
+
+4. DEPENDENCIAS ADICIONALES DETECTADAS (no listadas en dependencies.yml)
+-----------------------------------------------------------------------
+    kPOD       -> usado en Presentacion1.ipynb (from kPOD import k_pod)
+    dictances  -> usado en Presentacion2.ipynb
+    cmasher    -> usado en Presentacion2.ipynb
+Hay que instalarlas por separado (pip install kPOD dictances cmasher) o
+agregarlas al archivo dependencies.yml.
+
+5. ARCHIVOS/CARPETAS DEL REPOSITORIO ORIGINAL EXCLUIDOS DE Embalses_V2
+------------------------------------------------------------------------
+    Fajas_Gauss_Kruger_Argentina/  -> no referenciado por ningun notebook.
+    geometrias-corregidas/Area_interes_corregido.*,
+        Embalses_Cortado_corregido.*, Prueba_SanRoque.*,
+        Rios_Cortado_corregido.*, Rios_Intermitentes_Cortado_corregido.*
+        -> no referenciados; solo se usa "Embalses unificado.shp".
+    Poligonos/ (carpeta plana original con pol180222*/polCruz* sueltos)
+        -> su contenido util se movio a 2022/Poligonos/ para que coincida
+        con las rutas que usan los notebooks.
+    polsembalses/ -> duplicado antiguo de poligonosnorte, con contenido
+        distinto (md5 distinto) y no referenciado por nombre en ningun
+        notebook; se descarta para evitar ambiguedad.
+    Plots/ -> son resultados/graficos generados por los notebooks
+        (salida), no insumos del algoritmo.
+    __pycache__/ -> cache de Python, se regenera solo.
+    untitled.py -> script suelto, no importado por ningun notebook y con
+        variables no definidas (s2_mask); parece un borrador de la
+        seccion de KMeans que ya esta integrada en Presentacion1.ipynb.
