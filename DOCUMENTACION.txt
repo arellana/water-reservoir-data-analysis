@@ -1,9 +1,9 @@
-DOCUMENTACION - Embalses_V2
-============================
+DOCUMENTACION - EmbalsesCordoba
+================================
 Version limpia y reorganizada del repositorio EmbalsesCordoba, conteniendo
-unicamente el codigo y los datos vectoriales que el algoritmo utiliza
-efectivamente para correr. No incluye graficos de salida ni archivos
-sueltos sin referencias en el codigo.
+unicamente el codigo y los datos (vectoriales y raster) que el algoritmo
+utiliza efectivamente para correr. No incluye graficos de salida ni
+archivos sueltos sin referencias en el codigo.
 
 1. ESTRUCTURA DE CARPETAS Y SU ROL EN EL ALGORITMO
 ---------------------------------------------------
@@ -41,6 +41,20 @@ poligonossur/PoligonosEmbalsesSur18-10.shp
     supervisado (arbol de decision / Random Forest) y para comparar
     firmas espectrales entre coberturas (agua, vegetacion, etc.).
 
+ImagenesSentinel/
+    Carpeta unica con todas las imagenes Sentinel-2 (stacks multibanda)
+    que usan los notebooks. Contenido actual:
+    - Norte_20mTODOS.tif   - zona Norte, 17/01/2021, 11 bandas (B01-B09,
+      B11, B12) a 20 m. Usado por Presentacion1.ipynb.
+    - Sur_20mTODOS.tif     - zona Sur, 17/01/2021, mismas 11 bandas a
+      20 m. Usado por Estadistica_ROIs.ipynb.
+    - stack2022norte.tif   - zona Norte, 18/02/2022, 10 bandas (B01-B08,
+      B11, B12) a 20 m. Usado por RandomForest.ipynb (zona='norte').
+    - StackRecortado_Molinos_B1a8_11_12.tif - recorte ajustado al
+      embalse Los Molinos, 18/02/2022, mismas 10 bandas a 20 m. Usado
+      por RandomForest.ipynb en la seccion "Molinos".
+    Ver seccion 3 para el detalle de como se generaron y que falta.
+
 2. LOGICA GENERAL DEL PIPELINE (comun a los notebooks)
 --------------------------------------------------------
     1. Se abre una imagen Sentinel-2 (stack multibanda, ya recortado y
@@ -66,85 +80,79 @@ poligonossur/PoligonosEmbalsesSur18-10.shp
        distribuciones (histogramas) de los indices e componentes por
        embalse, para caracterizar el estado trofico de cada uno.
 
-3. DATOS FALTANTES EN EL REPOSITORIO (IMAGENES SENTINEL-2)
+3. IMAGENES SENTINEL-2 (carpeta ImagenesSentinel/)
 --------------------------------------------------------------
-El repositorio original NO contenia ninguna imagen satelital: los
-notebooks leen rasters que no estan versionados en git (probablemente
-por su peso). Para poder correr el pipeline hay que tener disponibles,
-respetando las rutas relativas usadas en el codigo (relativas a la raiz
-del repo):
+El repositorio original no contenia ninguna imagen satelital: los
+notebooks leian rasters que no estaban versionados en git. Se
+descargaron y armaron los 4 stacks que necesitan los notebooks, y se
+unificaron en una unica carpeta "ImagenesSentinel/" (antes estaban
+repartidos entre "Imagenes enero 2021/" y "2022/Stack/", "2022/molinos/",
+rutas que ya no existen). Los paths de los 4 notebooks se actualizaron
+para apuntar a "ImagenesSentinel/...".
 
-    Imagenes enero 2021/Norte_20mTODOS.tif   [RESUELTO, ver abajo]
-        Stack de bandas Sentinel-2 (resolucion 20m) de la zona Norte,
-        usado por Presentacion1.ipynb.
-    Imagenes enero 2021/Sur_20mTODOS.tif     [RESUELTO, ver abajo]
-        Idem para la zona Sur, usado por Estadistica_ROIs.ipynb.
-    2022/Stack/stack2022Norte.tif y 2022/Stack/stack2022Sur.tif
-        (el nombre exacto depende de la variable "zona" en el notebook,
-        ej. stack2022Norte.tif / stack2022Sur.tif)
-        Stack Sentinel-2 2022 (bandas 1 a 12), usado por RandomForest.ipynb
-        y Presentacion2.ipynb. PENDIENTE.
-    2022/molinos/StackRecortado_Molinos_B1a8_11_12.tif
-        Recorte del stack sobre el embalse Los Molinos, usado por
-        RandomForest.ipynb para un caso de estudio particular. PENDIENTE.
+Fuente de los datos: Sentinel-2 L2A, COGs publicos del bucket de AWS
+"sentinel-cogs.s3.us-west-2.amazonaws.com" (catalogo STAC
+earth-search.aws.element84.com/v1), sin necesidad de autenticacion.
+Para cada imagen se recortaron las bandas directamente sobre el
+servidor (HTTP range requests via /vsicurl/, sin descargar la tesela
+completa de ~110x110 km) con gdalwarp: resampleo a 20 m (bilinear),
+recorte al area de interes + margen, mismo CRS que el resto del repo
+(EPSG:32720). Las bandas se apilaron con rasterio en un unico GeoTIFF
+(uint16, comprimido DEFLATE), con los nombres de banda que usa la lista
+"bandas" de cada notebook.
+
+    Norte_20mTODOS.tif
+        Tesela MGRS 20JLL, 17/01/2021 (fecha identificada por una linea
+        comentada en Estadistica_ROIs.ipynb que menciona el producto
+        original: "T20JLL_20210117..."). Cubre Cruz del Eje, El Cajon y
+        San Roque. 11 bandas: B01-B09, B11, B12 (orden: Banda 1, Azul,
+        Verde, Rojo, Banda 5, Banda 6, Banda 7, NIR, Banda 9, SWIR 1,
+        SWIR 2). Usado por Presentacion1.ipynb.
+    Sur_20mTODOS.tif
+        Tesela MGRS 20HLK, 17/01/2021 (mismo dia que Norte; se
+        determino que zona Sur -Cerro Pelado, Los Molinos, Rio Tercero,
+        La Vina, Usina 3, Piedra Mora, Arroyo Corto- cae en esta tesela
+        cruzando el bounding box de "Embalses unificado.shp" contra el
+        catalogo STAC). Mismas 11 bandas. Usado por Estadistica_ROIs.ipynb.
+    stack2022norte.tif
+        Tesela 20JLL, 18/02/2022. La fecha se determino a partir del
+        nombre de los poligonos de entrenamiento "2022/Poligonos/
+        pol180222.shp" (=18/02/22): se busco en el catalogo STAC la
+        escena de esa fecha para la tesela 20JLL y resulto tener
+        cobertura de nubes casi nula (0.004%), lo que confirma la
+        fecha. 10 bandas: B01-B08, B11, B12 (sin B09), tal como indica
+        el comentario del notebook ("Bandas 1,2,3,4,5,6,7,8,11 y 12").
+        Usado por RandomForest.ipynb (zona='norte').
+    StackRecortado_Molinos_B1a8_11_12.tif
+        Tesela 20HLK, 18/02/2022 (misma fecha, tambien con nubes casi
+        nulas: 0.002%), recortado ajustado solo al embalse Los Molinos
+        (en vez de a toda la zona Sur, tal como indica su nombre
+        "Recortado_Molinos"). Mismas 10 bandas que stack2022norte.tif.
+        Usado por RandomForest.ipynb en la seccion "Molinos".
+
+3.1 LO QUE TODAVIA FALTA
+-----------------------------
     2022/molinos/TrainingMolinosPoligonos.shp
-        Poligonos de entrenamiento para el caso Los Molinos, usado junto
-        al raster anterior. PENDIENTE.
-
-Estas carpetas no se crearon vacias en el repo para no ensuciarlo con
-directorios sin contenido; hay que crearlas al agregar las imagenes
-correspondientes.
-
-3.1 IMAGENES DE ENERO 2021 DESCARGADAS (28/08/2026)
------------------------------------------------------
-Se descargaron y generaron los dos stacks "Imagenes enero 2021/
-Norte_20mTODOS.tif" y "Sur_20mTODOS.tif" a partir de datos publicos de
-Sentinel-2 L2A (COGs en el bucket abierto de AWS
-"sentinel-cogs.s3.us-west-2.amazonaws.com", catalogo STAC
-earth-search.aws.element84.com/v1, sin necesidad de autenticacion).
-
-Como se identificaron la escena y la tesela correctas:
-    - En Estadistica_ROIs.ipynb hay una linea comentada que menciona
-      explicitamente el producto original: tesela MGRS "T20JLL", fecha
-      de captura "20210117" (17 de enero de 2021).
-    - Se armo el bounding box de los embalses de la zona Norte (Cruz
-      del Eje, El Cajon, San Roque) y de la zona Sur (Cerro Pelado, Los
-      Molinos, Rio Tercero, La Vina, Usina 3, Piedra Mora, Arroyo Corto)
-      a partir de "geometrias-corregidas/Embalses unificado.shp".
-    - Se cruzaron esos bounding boxes contra las teselas Sentinel-2
-      disponibles el 17/01/2021 (via STAC): los embalses del Norte caen
-      en la tesela 20JLL (confirma la linea comentada del notebook) y
-      los del Sur caen en la tesela 20HLK. Ambas escenas tienen
-      cobertura de nubes practicamente nula ese dia (<0.2%).
-
-Como se generaron los GeoTIFF:
-    - Para cada zona se recortaron directamente sobre el servidor (HTTP
-      range requests via /vsicurl/, sin descargar la tesela completa de
-      ~110x110 km) las 11 bandas: B01, B02, B03, B04, B05, B06, B07,
-      B08, B09, B11 y B12, con gdalwarp: reproyeccion/resampleo a 20 m
-      de resolucion (bilinear), recorte al area de cada zona (bounding
-      box de sus embalses + 1500 m de margen) y mismo CRS que el resto
-      del repo (EPSG:32720).
-    - Las 11 bandas se apilaron en un unico GeoTIFF por zona (uint16,
-      comprimido DEFLATE) con rasterio, en el mismo orden y con los
-      mismos nombres de banda que usa "bandas" en los notebooks
-      (Banda 1, Azul, Verde, Rojo, Banda 5, Banda 6, Banda 7, NIR,
-      Banda 9, SWIR 1, SWIR 2).
-    - Se verifico que al recortar cada stack con
-      "Embalses unificado.shp" (rasterio.mask.mask) se obtienen pixeles
-      validos con valores de reflectancia razonables (rango ~13-3600,
-      recordar dividir por 10000 como hace delNone() en funciones.py).
-
-Ubicacion final: los archivos pesan (99 MB Norte / 170 MB Sur) y se
-guardaron fuera del repositorio git, en el disco externo:
-    /media/javi/KINGSTON/Sentinel_Cordoba/Imagenes enero 2021/
-        Norte_20mTODOS.tif
-        Sur_20mTODOS.tif
-En la raiz del repo se dejo un symlink "Imagenes enero 2021" apuntando
-a esa carpeta del disco externo, para que los notebooks los encuentren
-con la ruta relativa que ya usan. El symlink no se versiona en git (no
-tiene sentido versionar un link a un disco externo); si se mueve el
-repo a otra maquina hay que recrearlo o copiar los .tif localmente.
+        Poligonos de entrenamiento (ROIs dibujadas a mano sobre
+        StackRecortado_Molinos_B1a8_11_12.tif) que usa RandomForest.ipynb
+        junto con el raster de Molinos. Al ser poligonos dibujados a
+        mano (no se pueden regenerar automaticamente) siguen
+        PENDIENTES: hay que volver a trazarlos o recuperarlos de otra
+        copia del proyecto.
+    stack2022norte-2.tif
+        Presentacion2.ipynb usa zona='norte-2' -> path
+        'ImagenesSentinel/stack2022norte-2.tif', un stack 2022
+        alternativo/distinto de stack2022norte.tif cuyo origen exacto
+        no se pudo determinar (no hay ninguna pista en el codigo sobre
+        que lo distingue del stack de RandomForest.ipynb). PENDIENTE;
+        si se define que diferencia debe tener, se puede generar con el
+        mismo procedimiento que los demas stacks.
+    zona 'sur' en RandomForest.ipynb y Presentacion2.ipynb
+        El codigo tiene, comentado, un camino alternativo para
+        zona='sur' que usaria 'ImagenesSentinel/stack2022sur.tif'; ese
+        archivo no se genero porque la rama activa del codigo solo usa
+        'norte'/'norte-2'. Se puede generar igual que stack2022norte.tif
+        pero con la tesela 20HLK si se necesita.
 
 4. DEPENDENCIAS ADICIONALES DETECTADAS (no listadas en dependencies.yml)
 -----------------------------------------------------------------------
@@ -154,7 +162,7 @@ repo a otra maquina hay que recrearlo o copiar los .tif localmente.
 Hay que instalarlas por separado (pip install kPOD dictances cmasher) o
 agregarlas al archivo dependencies.yml.
 
-5. ARCHIVOS/CARPETAS DEL REPOSITORIO ORIGINAL EXCLUIDOS DE Embalses_V2
+5. ARCHIVOS/CARPETAS DEL REPOSITORIO ORIGINAL EXCLUIDOS
 ------------------------------------------------------------------------
     Fajas_Gauss_Kruger_Argentina/  -> no referenciado por ningun notebook.
     geometrias-corregidas/Area_interes_corregido.*,

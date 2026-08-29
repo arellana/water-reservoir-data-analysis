@@ -24,8 +24,8 @@ Esta es la versión reorganizada del repositorio: contiene únicamente el códig
 - 🧩 **2022/Poligonos**
   Polígonos de entrenamiento (ROIs dibujadas a mano) usados por `Presentacion2.ipynb` como muestras etiquetadas para los clasificadores supervisados y para comparar firmas espectrales entre coberturas.
 
-- 🛰️ **Imagenes enero 2021**
-  Stacks Sentinel-2 (`Norte_20mTODOS.tif`, `Sur_20mTODOS.tif`), 11 bandas a 20 m, recortados sobre las zonas de los embalses. Se generaron a partir de datos públicos de Sentinel-2 L2A (ver sección 3.1 de `DOCUMENTACION.txt`). Esta carpeta es un symlink a un disco externo (`/media/javi/KINGSTON/Sentinel_Cordoba/Imagenes enero 2021`) por el peso de los archivos, y no se versiona en git.
+- 🛰️ **ImagenesSentinel**
+  Carpeta única con todos los stacks Sentinel-2 que usan los notebooks: `Norte_20mTODOS.tif` y `Sur_20mTODOS.tif` (17/01/2021, 11 bandas a 20 m) y `stack2022norte.tif` y `StackRecortado_Molinos_B1a8_11_12.tif` (18/02/2022, 10 bandas a 20 m). Se generaron a partir de datos públicos de Sentinel-2 L2A (ver sección 3 de `DOCUMENTACION.txt`) y se versionan con **Git LFS** por su peso.
 
 ---
 
@@ -90,7 +90,8 @@ Esta es la versión reorganizada del repositorio: contiene únicamente el códig
 ## 📝 Cosas por Hacer
 
 * 🌐 Traducir todo el repositorio al inglés.
-* 🛰️ Conseguir/generar los stacks Sentinel-2 de **2022** (`2022/Stack/stack2022Norte.tif`, `stack2022Sur.tif`, y el recorte de Los Molinos), que usan `RandomForest.ipynb` y `Presentacion2.ipynb` y todavía no están disponibles.
+* 🗺️ Recuperar o volver a trazar `2022/molinos/TrainingMolinosPoligonos.shp` (ROIs de entrenamiento de Los Molinos, dibujadas a mano, que usa `RandomForest.ipynb`).
+* 🛰️ Definir y generar `ImagenesSentinel/stack2022norte-2.tif`, que usa `Presentacion2.ipynb` (zona='norte-2') y todavía no está disponible.
 * 📦 Sumar `kPOD`, `dictances` y `cmasher` a `dependencies.yml`.
 * 📖 Documentar cada notebook con descripciones claras.
 
