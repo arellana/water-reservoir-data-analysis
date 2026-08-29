@@ -88,7 +88,7 @@ This is the reorganized version of the repository: it contains only the code and
 
 ## 📝 To Do
 
-* 🗺️ Recover or re-trace `Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp` (hand-drawn training ROIs for Los Molinos, used by `RandomForest.ipynb`).
+* 🗺️ Replace `Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp` with real hand-drawn ROIs for Los Molinos. The current file is a **synthetic placeholder** (spectral clustering + visual review, not recovered/expert-labeled data) generated so `RandomForest.ipynb` runs end to end — see `DOCUMENTATION.txt` section 3.1 for caveats before trusting its classifier results.
 * 🛰️ Define and generate `ImagenesSentinel/stack2022norte-2.tif`, used by `Presentacion2.ipynb` (zona='norte-2') and not yet available.
 * 📦 Add `kPOD`, `dictances`, and `cmasher` to `dependencies.yml`.
 * 📖 Document each notebook with clear descriptions.

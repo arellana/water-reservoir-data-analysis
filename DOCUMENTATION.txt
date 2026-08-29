@@ -132,15 +132,35 @@ used by the "bandas" list in each notebook.
         "Poligonos/Embalses_unificado.shp" against the STAC catalog).
         Same 11 bands. Used by Estadistica_ROIs.ipynb.
     stack2022norte.tif
-        Tile 20JLL, 2022-02-18. The date was determined from the
-        name of the training polygons
-        "Poligonos/Entrenamiento_2022/pol180222.shp" (=2022-02-18): the
-        STAC catalog was searched for the scene from that date for
-        tile 20JLL and it turned out to have almost zero cloud
-        coverage (0.004%), confirming the date. 10 bands: B01-B08,
-        B11, B12 (no B09), as indicated by the notebook's comment
-        ("Bands 1,2,3,4,5,6,7,8,11 and 12"). Used by
-        RandomForest.ipynb (zona='norte').
+        REGENERATED on 2026-08-29 from tile 20JLL, 2021-09-24
+        (scene S2B_20JLL_20210924_1_L2A, cloud cover 0.0015%),
+        replacing the original 2022-02-18 scene
+        (S2B_20JLL_20220218_0_L2A). That original scene only had
+        partial tile coverage (~48% of the area, a diagonal wedge
+        typical of a single Sentinel-2 granule split) and left
+        Cruz del Eje and San Roque entirely as nodata, which made
+        rasterio.mask() over those reservoirs (and over the
+        Poligonos/Entrenamiento_2022/polCruz*.shp training polygons,
+        which sit in that same gap) return all-zero/NaN pixels.
+        Every single-granule 2022 STAC entry for tile 20JLL was
+        checked and had the same gap (this AWS mirror does not carry
+        a second overlap granule for this tile throughout 2022), so
+        the closest fully-covering, near-zero-cloud alternative found
+        was 2021-09-24. The original 2022-02-18 GeoTIFF is kept as a
+        backup outside the repo (not in ImagenesSentinel/) in case a
+        different fix is preferred later. Same 10 bands, same order,
+        same grid (CRS EPSG:32720, 20 m, same transform/extent) as
+        before: B01-B08, B11, B12 (no B09), as indicated by the
+        notebook's comment ("Bands 1,2,3,4,5,6,7,8,11 and 12"). Used
+        by Presentacion2.ipynb (zona='norte') and RandomForest.ipynb
+        (zona='norte').
+        CAVEAT: the hand-drawn training polygons in
+        Poligonos/Entrenamiento_2022/pol180222*.shp and polCruz*.shp
+        were originally labeled (Agua Clara/Alga Difusa/Alga Densa)
+        by visual inspection of the 2022-02-18 image. Water/algae
+        conditions may differ on 2021-09-24, so those class labels
+        should be visually re-checked against the new image before
+        trusting the supervised classifiers' results.
     StackRecortado_Molinos_B1a8_11_12.tif
         Tile 20HLK, 2022-02-18 (same date, also with near-zero
         clouds: 0.002%), cropped to just the Los Molinos reservoir
@@ -152,12 +172,56 @@ used by the "bandas" list in each notebook.
 3.1 WHAT IS STILL MISSING
 -----------------------------
     Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp
-        Training polygons (ROIs hand-drawn over
-        StackRecortado_Molinos_B1a8_11_12.tif) used by RandomForest.ipynb
-        together with the Molinos raster. Being hand-drawn polygons
-        (they cannot be regenerated automatically) they remain
-        PENDING: they need to be re-traced or recovered from another
-        copy of the project.
+        SYNTHETIC, NOT RECOVERED DATA. The original hand-drawn ROIs
+        are lost and cannot be recovered. This file was GENERATED on
+        2026-08-29 as a best-effort substitute, NOT a recovery of the
+        real ones, using a combination of unsupervised spectral
+        clustering and visual review (not a domain expert's field-
+        informed judgment):
+          1. Masked StackRecortado_Molinos_B1a8_11_12.tif to the "Los
+             Molinos" polygon (Poligonos/Sur/PoligonosEmbalsesSur18-10.shp),
+             eroded 40 m inward to exclude land/water mixed-pixel
+             shoreline contamination.
+          2. Computed NDCI = (RedEdge1-Red)/(RedEdge1+Red) (Mishra &
+             Mishra 2012, a chlorophyll index designed for turbid
+             inland water) per pixel. Thresholds NDCI<0.01 / 0.01-0.05
+             / >=0.05 define Agua Clara / Alga Difusa / Alga Densa.
+             An initial plain KMeans(k=3) on all 10 bands was tried
+             first but mostly captured a turbidity/depth gradient, not
+             chlorophyll signal (confirmed by near-identical NDVI/NDCI
+             between its two "water" clusters) -- NDCI thresholding
+             gave a result that visibly matches the discoloration
+             actually visible in the true-color image at the southern
+             inlet, so it was used instead.
+          3. Polygonized the per-class pixels (morphological closing
+             to merge speckle into cohesive patches, connected
+             components, small-area filter), and picked 8 well-spaced
+             untouched interior sample squares for Agua Clara (rather
+             than one giant polygon covering the whole reservoir).
+             Result: 8 Agua Clara / 10 Alga Difusa / 2 Alga Densa
+             polygons. Saved with the SCP-style column schema
+             (fid, MC_ID, MC_name, C_ID, C_name, SCP_UID) that
+             RandomForest.ipynb's loading code expects.
+        CAVEATS:
+          - The Agua Clara / Alga Difusa boundary in particular is a
+            judgment call (a threshold on a continuous index), not a
+            hard physical category -- treat "Alga Difusa" pixels as
+            the least certain class.
+          - Classifier accuracy reported when training on this file is
+            partly circular: the labels were themselves derived from a
+            band ratio the classifier can trivially relearn, so high
+            accuracy does NOT validate real-world algae-detection
+            performance. It only confirms the code path works.
+          - Fixed a related pre-existing bug this surfaced: the cell
+            loading this shapefile did
+            `names = list(set(radiosM['MC_name']))[1:]`, silently
+            dropping one class based on Python's non-deterministic set
+            iteration order (likely written to drop a placeholder
+            value present in the original author's real data, which
+            this synthetic file doesn't have). Changed to keep all
+            classes present in the file.
+        If real ROIs are ever recovered or re-traced by hand, this
+        file should be replaced and this note removed.
     stack2022norte-2.tif
         Presentacion2.ipynb uses zona='norte-2' -> path
         'ImagenesSentinel/stack2022norte-2.tif', an alternative/different
