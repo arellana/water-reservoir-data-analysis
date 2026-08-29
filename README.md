@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpeg" alt="EmbalsesCordoba banner" width="100%">
+</p>
+
 # 🌊 EmbalsesCordoba
 
 ## 🛰️ Análisis del Estado Trófico de los Embalses de Córdoba
