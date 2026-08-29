@@ -12,17 +12,12 @@ Esta es la versión reorganizada del repositorio: contiene únicamente el códig
 ## 📂 Contenido del Repositorio
 
 ### 🗂️ Carpetas
-- ✏️ **geometrias-corregidas**
-  Contiene `Embalses unificado.shp`: el polígono único con el contorno de todos los embalses, usado por los 4 notebooks para recortar la imagen satelital al área de interés antes de calcular cualquier índice.
-
-- 🗺️ **poligonosnorte**
-  Polígonos individuales de los embalses de la zona Norte (Cruz del Eje, El Cajón, San Roque), usados para separar estadísticas por embalse.
-
-- 🗺️ **poligonossur**
-  Ídem para la zona Sur (Río Tercero, Los Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, La Viña, Usina 3).
-
-- 🧩 **2022/Poligonos**
-  Polígonos de entrenamiento (ROIs dibujadas a mano) usados por `Presentacion2.ipynb` como muestras etiquetadas para los clasificadores supervisados y para comparar firmas espectrales entre coberturas.
+- 🗺️ **Poligonos**
+  Toda la información vectorial del proyecto en un solo lugar:
+  - `Embalses_unificado.shp` — el polígono único con el contorno de todos los embalses, usado por los 4 notebooks para recortar la imagen satelital al área de interés antes de calcular cualquier índice.
+  - `Norte/PoligonosEmbalses18-10.shp` — polígonos individuales de los embalses de la zona Norte (Cruz del Eje, El Cajón, San Roque), usados para separar estadísticas por embalse.
+  - `Sur/PoligonosEmbalsesSur18-10.shp` — ídem para la zona Sur (Río Tercero, Los Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, La Viña, Usina 3).
+  - `Entrenamiento_2022/` — polígonos de entrenamiento (ROIs dibujadas a mano) usados por `Presentacion2.ipynb` y `RandomForest.ipynb` como muestras etiquetadas para los clasificadores supervisados y para comparar firmas espectrales entre coberturas.
 
 - 🛰️ **ImagenesSentinel**
   Carpeta única con todos los stacks Sentinel-2 que usan los notebooks: `Norte_20mTODOS.tif` y `Sur_20mTODOS.tif` (17/01/2021, 11 bandas a 20 m) y `stack2022norte.tif` y `StackRecortado_Molinos_B1a8_11_12.tif` (18/02/2022, 10 bandas a 20 m). Se generaron a partir de datos públicos de Sentinel-2 L2A (ver sección 3 de `DOCUMENTACION.txt`) y se versionan con **Git LFS** por su peso.
@@ -82,7 +77,7 @@ Esta es la versión reorganizada del repositorio: contiene únicamente el códig
 
 4. **Inspeccionar datos geoespaciales**
 
-   * Las carpetas con geometrías (`geometrias-corregidas`, `poligonosnorte`, `poligonossur`, `2022/Poligonos`) contienen los polígonos de entrada del algoritmo.
+   * La carpeta `Poligonos` (con sus subcarpetas `Norte`, `Sur` y `Entrenamiento_2022`) contiene todos los polígonos de entrada del algoritmo.
    * 🔧 Se pueden modificar las **Regiones de Interés (ROIs)** para estudiar nuevos sitios.
 
 ---
@@ -90,7 +85,7 @@ Esta es la versión reorganizada del repositorio: contiene únicamente el códig
 ## 📝 Cosas por Hacer
 
 * 🌐 Traducir todo el repositorio al inglés.
-* 🗺️ Recuperar o volver a trazar `2022/molinos/TrainingMolinosPoligonos.shp` (ROIs de entrenamiento de Los Molinos, dibujadas a mano, que usa `RandomForest.ipynb`).
+* 🗺️ Recuperar o volver a trazar `Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp` (ROIs de entrenamiento de Los Molinos, dibujadas a mano, que usa `RandomForest.ipynb`).
 * 🛰️ Definir y generar `ImagenesSentinel/stack2022norte-2.tif`, que usa `Presentacion2.ipynb` (zona='norte-2') y todavía no está disponible.
 * 📦 Sumar `kPOD`, `dictances` y `cmasher` a `dependencies.yml`.
 * 📖 Documentar cada notebook con descripciones claras.
