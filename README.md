@@ -2,7 +2,9 @@
   <img src="assets/banner.jpeg" alt="EmbalsesCordoba banner" width="100%">
 </p>
 
-# 🌊 EmbalsesCordoba
+# 🌊 water-reservoir-data-analysis
+
+![Contador de visitas](https://komarev.com/ghpvc/?username=arellana-water-reservoir-data-analysis&label=Visitas&color=blue&style=flat-square)
 
 ## 🛰️ Trophic State Analysis of the Reservoirs of Córdoba
 **Based on Sentinel-2 optical satellite imagery.**
