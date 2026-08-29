@@ -1,0 +1,205 @@
+DOCUMENTATION - EmbalsesCordoba
+================================
+Clean and reorganized version of the EmbalsesCordoba repository, containing
+only the code and data (vector and raster) that the algorithm actually
+uses to run. It does not include output plots or loose files with no
+references in the code.
+
+1. FOLDER STRUCTURE AND ITS ROLE IN THE ALGORITHM
+---------------------------------------------------
+
+funciones.py
+    Helper functions shared by all the notebooks:
+    - nequalize(): normalizes/equalizes a band or a stack of bands by
+      percentiles (clips values outside [p, 100-p] to [0,1]).
+    - plot_rgb(): composes and plots a combination of bands (e.g. RGB or
+      false color) applying nequalize().
+    - delNone(): discards nodata pixels and normalizes by the
+      reflectance factor (10000, specific to Sentinel-2 Level 2A).
+    - guardar_GTiff(): writes an array (2D or 3D) to a GeoTIFF with its
+      CRS, transform, and band names.
+
+Poligonos/
+    All of the project's vector information, grouped into a single
+    directory (previously split across "geometrias-corregidas/",
+    "poligonosnorte/", "poligonossur/", and "2022/Poligonos/",
+    inconsistent names that no longer exist):
+
+    Poligonos/Embalses_unificado.shp (+ .dbf/.shx/.prj/.qpj)
+        Single polygon with the outline of all the reservoirs in the
+        province (previously "geometrias-corregidas/Embalses unificado.shp",
+        the space was removed from the name for path convenience). Used
+        in all 4 notebooks to clip (mask) the satellite image to each
+        reservoir's area before any index calculation or classification.
+
+    Poligonos/Norte/PoligonosEmbalses18-10.shp
+        Individual reservoir polygons for the Northern zone (Cruz
+        del Eje, El Cajon, San Roque, etc.), used to split
+        statistics by reservoir within the northern zone (previously
+        "poligonosnorte/PoligonosEmbalses18-10.shp").
+
+    Poligonos/Sur/PoligonosEmbalsesSur18-10.shp
+        Same as above but for the Southern zone (Rio Tercero, Los
+        Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, Allende,
+        Usina 3, etc.) (previously "poligonossur/PoligonosEmbalsesSur18-10.shp").
+
+    Poligonos/Entrenamiento_2022/pol180222.shp, pol180222-2.shp,
+    polCruz.shp, polCruz-2.shp
+        Training polygons (hand-drawn ROIs) used by
+        Presentacion2.ipynb as labeled samples for the supervised
+        classifier (decision tree / Random Forest) and to compare
+        spectral signatures between land covers (water,
+        vegetation, etc.) (previously "2022/Poligonos/*.shp").
+
+    Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp
+        Path expected by RandomForest.ipynb for the Los Molinos
+        training polygons (previously
+        "2022/molinos/TrainingMolinosPoligonos.shp"). Still PENDING,
+        see section 3.1.
+
+ImagenesSentinel/
+    Single folder with all the Sentinel-2 images (multiband stacks)
+    used by the notebooks. Current contents:
+    - Norte_20mTODOS.tif   - Northern zone, 2021-01-17, 11 bands (B01-B09,
+      B11, B12) at 20 m. Used by Presentacion1.ipynb.
+    - Sur_20mTODOS.tif     - Southern zone, 2021-01-17, same 11 bands at
+      20 m. Used by Estadistica_ROIs.ipynb.
+    - stack2022norte.tif   - Northern zone, 2022-02-18, 10 bands (B01-B08,
+      B11, B12) at 20 m. Used by RandomForest.ipynb (zona='norte').
+    - StackRecortado_Molinos_B1a8_11_12.tif - crop adjusted to the
+      Los Molinos reservoir, 2022-02-18, same 10 bands at 20 m. Used
+      by RandomForest.ipynb in the "Molinos" section.
+    See section 3 for details on how they were generated and what is
+    missing.
+
+2. GENERAL PIPELINE LOGIC (common to the notebooks)
+--------------------------------------------------------
+    1. A Sentinel-2 image is opened (multiband stack, already cropped
+       and stacked) with rasterio.
+    2. The image is clipped (rasterio.mask.mask) using the polygon
+       from "Poligonos/Embalses_unificado.shp" to keep only reservoir
+       water pixels.
+    3. On that mask the following are computed:
+       - Optical indices: NDVI, NDWI.
+       - Tasseled Cap components: Brightness, Greeness, Wetness.
+       - Average spectral signatures per reservoir (using the
+         individual polygons from Poligonos/Norte and Poligonos/Sur).
+    4. (Presentacion1) Unsupervised clustering is applied (KMeans, k-POD
+       for data with missing values) to the water pixels to explore
+       natural groupings of trophic state.
+    5. (Presentacion2 / RandomForest) Training pixels are labeled
+       with the polygons from Poligonos/Entrenamiento_2022/*.shp and a
+       supervised classifier is trained (decision tree, Random Forest) to
+       predict cover/trophic state classes, evaluated with a confusion
+       matrix, accuracy, and kappa (and StratifiedKFold cross-validation).
+    6. (Estadistica_ROIs) Descriptive statistics and distributions
+       (histograms) of the indices and components are generated per
+       reservoir, to characterize the trophic state of each one.
+
+3. SENTINEL-2 IMAGES (ImagenesSentinel/ folder)
+--------------------------------------------------------------
+The original repository did not contain any satellite imagery: the
+notebooks read rasters that were not versioned in git. The 4 stacks
+needed by the notebooks were downloaded and assembled, and unified
+into a single "ImagenesSentinel/" folder (previously split across
+"Imagenes enero 2021/" and "2022/Stack/", "2022/molinos/", paths
+that no longer exist). The paths in the 4 notebooks were updated
+to point to "ImagenesSentinel/...".
+
+Data source: Sentinel-2 L2A, public COGs from the AWS bucket
+"sentinel-cogs.s3.us-west-2.amazonaws.com" (STAC catalog
+earth-search.aws.element84.com/v1), no authentication required.
+For each image the bands were cropped directly on the server
+(HTTP range requests via /vsicurl/, without downloading the full
+~110x110 km tile) with gdalwarp: resampled to 20 m (bilinear),
+cropped to the area of interest + margin, same CRS as the rest of
+the repo (EPSG:32720). The bands were stacked with rasterio into a
+single GeoTIFF (uint16, DEFLATE compressed), with the band names
+used by the "bandas" list in each notebook.
+
+    Norte_20mTODOS.tif
+        MGRS tile 20JLL, 2021-01-17 (date identified from a
+        commented line in Estadistica_ROIs.ipynb that mentions the
+        original product: "T20JLL_20210117..."). Covers Cruz del Eje,
+        El Cajon, and San Roque. 11 bands: B01-B09, B11, B12 (order:
+        Band 1, Blue, Green, Red, Band 5, Band 6, Band 7, NIR, Band 9,
+        SWIR 1, SWIR 2). Used by Presentacion1.ipynb.
+    Sur_20mTODOS.tif
+        MGRS tile 20HLK, 2021-01-17 (same day as Norte; it was
+        determined that the Southern zone -Cerro Pelado, Los Molinos,
+        Rio Tercero, La Vina, Usina 3, Piedra Mora, Arroyo Corto- falls
+        in this tile by crossing the bounding box of
+        "Poligonos/Embalses_unificado.shp" against the STAC catalog).
+        Same 11 bands. Used by Estadistica_ROIs.ipynb.
+    stack2022norte.tif
+        Tile 20JLL, 2022-02-18. The date was determined from the
+        name of the training polygons
+        "Poligonos/Entrenamiento_2022/pol180222.shp" (=2022-02-18): the
+        STAC catalog was searched for the scene from that date for
+        tile 20JLL and it turned out to have almost zero cloud
+        coverage (0.004%), confirming the date. 10 bands: B01-B08,
+        B11, B12 (no B09), as indicated by the notebook's comment
+        ("Bands 1,2,3,4,5,6,7,8,11 and 12"). Used by
+        RandomForest.ipynb (zona='norte').
+    StackRecortado_Molinos_B1a8_11_12.tif
+        Tile 20HLK, 2022-02-18 (same date, also with near-zero
+        clouds: 0.002%), cropped to just the Los Molinos reservoir
+        (rather than the whole Southern zone, as indicated by its
+        name "Recortado_Molinos"). Same 10 bands as
+        stack2022norte.tif. Used by RandomForest.ipynb in the
+        "Molinos" section.
+
+3.1 WHAT IS STILL MISSING
+-----------------------------
+    Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp
+        Training polygons (ROIs hand-drawn over
+        StackRecortado_Molinos_B1a8_11_12.tif) used by RandomForest.ipynb
+        together with the Molinos raster. Being hand-drawn polygons
+        (they cannot be regenerated automatically) they remain
+        PENDING: they need to be re-traced or recovered from another
+        copy of the project.
+    stack2022norte-2.tif
+        Presentacion2.ipynb uses zona='norte-2' -> path
+        'ImagenesSentinel/stack2022norte-2.tif', an alternative/different
+        2022 stack from stack2022norte.tif whose exact origin could
+        not be determined (there is no clue in the code about what
+        distinguishes it from the RandomForest.ipynb stack). PENDING;
+        once it is defined what difference it should have, it can be
+        generated with the same procedure as the other stacks.
+    'sur' zone in RandomForest.ipynb and Presentacion2.ipynb
+        The code has, commented out, an alternative path for
+        zona='sur' that would use 'ImagenesSentinel/stack2022sur.tif';
+        that file was not generated because the active branch of the
+        code only uses 'norte'/'norte-2'. It can be generated the same
+        way as stack2022norte.tif but with tile 20HLK if needed.
+
+4. ADDITIONAL DEPENDENCIES DETECTED (not listed in dependencies.yml)
+-----------------------------------------------------------------------
+    kPOD       -> used in Presentacion1.ipynb (from kPOD import k_pod)
+    dictances  -> used in Presentacion2.ipynb
+    cmasher    -> used in Presentacion2.ipynb
+They must be installed separately (pip install kPOD dictances cmasher) or
+added to the dependencies.yml file.
+
+5. FILES/FOLDERS FROM THE ORIGINAL REPOSITORY THAT WERE EXCLUDED
+------------------------------------------------------------------------
+    Fajas_Gauss_Kruger_Argentina/  -> not referenced by any notebook.
+    geometrias-corregidas/Area_interes_corregido.*,
+        Embalses_Cortado_corregido.*, Prueba_SanRoque.*,
+        Rios_Cortado_corregido.*, Rios_Intermitentes_Cortado_corregido.*
+        -> not referenced; only "Embalses_unificado.shp" is used.
+    Poligonos/ from the original repository (flat folder with loose
+        pol180222*/polCruz* files) -> its useful contents moved, in
+        two reorganization steps, to "Poligonos/Entrenamiento_2022/"
+        (current name; not to be confused with the current "Poligonos/"
+        folder, which is the final consolidation of ALL vector data,
+        see section 1).
+    polsembalses/ -> old duplicate of poligonosnorte, with different
+        content (different md5) and not referenced by name in any
+        notebook; discarded to avoid ambiguity.
+    Plots/ -> results/plots generated by the notebooks (output),
+        not algorithm inputs.
+    __pycache__/ -> Python cache, regenerates on its own.
+    untitled.py -> loose script, not imported by any notebook and with
+        undefined variables (s2_mask); appears to be a draft of the
+        KMeans section already integrated into Presentacion1.ipynb.

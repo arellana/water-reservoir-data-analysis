@@ -4,103 +4,102 @@
 
 # 🌊 EmbalsesCordoba
 
-## 🛰️ Análisis del Estado Trófico de los Embalses de Córdoba
-**Basado en imágenes satelitales ópticas Sentinel-2.**
+## 🛰️ Trophic State Analysis of the Reservoirs of Córdoba
+**Based on Sentinel-2 optical satellite imagery.**
 
-Repositorio destinado al análisis del estado trófico de diversos embalses en la provincia de Córdoba, Argentina, utilizando herramientas de **teledetección, análisis espacial y machine learning**.
+Repository dedicated to the analysis of the trophic state of several reservoirs in the province of Córdoba, Argentina, using **remote sensing, spatial analysis, and machine learning** tools.
 
-Esta es la versión reorganizada del repositorio: contiene únicamente el código y los datos vectoriales que el algoritmo usa realmente (se eliminaron carpetas y archivos sueltos sin referencias en el código). Ver `DOCUMENTACION.txt` para el detalle línea por línea de qué hace cada carpeta, la lógica del pipeline, y los datos satelitales que faltan/se agregaron.
+This is the reorganized version of the repository: it contains only the code and vector data that the algorithm actually uses (loose folders and files with no references in the code were removed). See `DOCUMENTATION.txt` for a line-by-line breakdown of what each folder does, the pipeline logic, and the satellite data that is missing/was added.
 
 ---
 
-## 📂 Contenido del Repositorio
+## 📂 Repository Contents
 
-### 🗂️ Carpetas
+### 🗂️ Folders
 - 🗺️ **Poligonos**
-  Toda la información vectorial del proyecto en un solo lugar:
-  - `Embalses_unificado.shp` — el polígono único con el contorno de todos los embalses, usado por los 4 notebooks para recortar la imagen satelital al área de interés antes de calcular cualquier índice.
-  - `Norte/PoligonosEmbalses18-10.shp` — polígonos individuales de los embalses de la zona Norte (Cruz del Eje, El Cajón, San Roque), usados para separar estadísticas por embalse.
-  - `Sur/PoligonosEmbalsesSur18-10.shp` — ídem para la zona Sur (Río Tercero, Los Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, La Viña, Usina 3).
-  - `Entrenamiento_2022/` — polígonos de entrenamiento (ROIs dibujadas a mano) usados por `Presentacion2.ipynb` y `RandomForest.ipynb` como muestras etiquetadas para los clasificadores supervisados y para comparar firmas espectrales entre coberturas.
+  All the project's vector information in one place:
+  - `Embalses_unificado.shp` — the single polygon with the outline of all the reservoirs, used by all 4 notebooks to clip the satellite image to the area of interest before computing any index.
+  - `Norte/PoligonosEmbalses18-10.shp` — individual reservoir polygons for the Northern zone (Cruz del Eje, El Cajón, San Roque), used to split statistics by reservoir.
+  - `Sur/PoligonosEmbalsesSur18-10.shp` — same as above for the Southern zone (Río Tercero, Los Molinos, Piedra Mora, Cerro Pelado, Arroyo Corto, La Viña, Usina 3).
+  - `Entrenamiento_2022/` — training polygons (hand-drawn ROIs) used by `Presentacion2.ipynb` and `RandomForest.ipynb` as labeled samples for the supervised classifiers and to compare spectral signatures between land covers.
 
 - 🛰️ **ImagenesSentinel**
-  Carpeta única con todos los stacks Sentinel-2 que usan los notebooks: `Norte_20mTODOS.tif` y `Sur_20mTODOS.tif` (17/01/2021, 11 bandas a 20 m) y `stack2022norte.tif` y `StackRecortado_Molinos_B1a8_11_12.tif` (18/02/2022, 10 bandas a 20 m). Se generaron a partir de datos públicos de Sentinel-2 L2A (ver sección 3 de `DOCUMENTACION.txt`) y se versionan con **Git LFS** por su peso.
+  Single folder with all the Sentinel-2 stacks used by the notebooks: `Norte_20mTODOS.tif` and `Sur_20mTODOS.tif` (2021-01-17, 11 bands at 20 m) and `stack2022norte.tif` and `StackRecortado_Molinos_B1a8_11_12.tif` (2022-02-18, 10 bands at 20 m). They were generated from public Sentinel-2 L2A data (see section 3 of `DOCUMENTATION.txt`) and are versioned with **Git LFS** due to their size.
 
 ---
 
-### 📑 Archivos principales
+### 📑 Main Files
 - 📘 **Estadistica_ROIs.ipynb**
-  Notebook que analiza estadísticas de las **Regiones de Interés (ROIs)**:
-  - Firma Espectral
-  - Índices Ópticos (NDVI, NDWI)
+  Notebook that analyzes statistics of the **Regions of Interest (ROIs)**:
+  - Spectral Signature
+  - Optical Indices (NDVI, NDWI)
   - Brightness, Greeness, Wetness
 
 - 🌲 **RandomForest.ipynb**
-  Implementación de un modelo **Random Forest** (y árbol de decisión) para clasificar el estado trófico, con matriz de confusión, accuracy, kappa y validación cruzada.
+  Implementation of a **Random Forest** model (and decision tree) to classify trophic state, with confusion matrix, accuracy, kappa, and cross-validation.
 
 - ⚙️ **funciones.py**
-  Funciones auxiliares:
-  - `nequalize()` - normaliza/equaliza bandas por percentiles.
-  - `plot_rgb()` - compone y grafica combinaciones de bandas.
-  - `delNone()` - descarta nodata y normaliza por el factor de reflectancia.
-  - `guardar_GTiff()` - escribe una matriz a GeoTIFF con CRS y transform.
+  Helper functions:
+  - `nequalize()` - normalizes/equalizes bands by percentiles.
+  - `plot_rgb()` - composes and plots band combinations.
+  - `delNone()` - discards nodata and normalizes by the reflectance factor.
+  - `guardar_GTiff()` - writes an array to GeoTIFF with CRS and transform.
 
-- 📙 **Presentacion1.ipynb** y **Presentacion2.ipynb**
-  - Métodos de clasificación **KMeans** (y k-POD) aplicados a las ROIs.
-  - Métodos de **Machine Learning** aplicados a las ROIs junto con análisis de firmas espectrales:
+- 📙 **Presentacion1.ipynb** and **Presentacion2.ipynb**
+  - **KMeans** (and k-POD) classification methods applied to the ROIs.
+  - **Machine Learning** methods applied to the ROIs together with spectral signature analysis:
     - Tasseled Cap (Brightness, Greeness, Wetness)
-    - Clasificadores Supervisados y No Supervisados
+    - Supervised and Unsupervised Classifiers
 
-- 📝 **DOCUMENTACION.txt**
-  Detalle de la lógica del pipeline, qué usa cada carpeta, dependencias adicionales detectadas en el código, y qué se excluyó del repositorio original y por qué.
+- 📝 **DOCUMENTATION.txt**
+  Detail of the pipeline logic, what each folder is used for, additional dependencies detected in the code, and what was excluded from the original repository and why.
 
 ---
 
-## ▶️ Ejecución del Proyecto
+## ▶️ Running the Project
 
-1. **Clonar el repositorio**
+1. **Clone the repository**
    ```bash
    git clone https://github.com/arellana/EmbalsesCordoba.git
    cd EmbalsesCordoba
    ```
 
-2. **Preparar el entorno**
-   Instalar dependencias desde el archivo **YAML**:
+2. **Set up the environment**
+   Install dependencies from the **YAML** file:
 
    ```bash
    conda env create -f dependencies.yml
    ```
 
-   Faltan en `dependencies.yml` algunas dependencias detectadas en el código (`kPOD`, `dictances`, `cmasher`); instalarlas aparte con pip. Ver `DOCUMENTACION.txt` (sección 4).
+   Some dependencies detected in the code are missing from `dependencies.yml` (`kPOD`, `dictances`, `cmasher`); install them separately with pip. See `DOCUMENTATION.txt` (section 4).
 
-3. **Explorar los notebooks**
+3. **Explore the notebooks**
 
-   * 📘 `Estadistica_ROIs.ipynb`: estadísticas de las ROIs.
-   * 📙 `Presentacion1.ipynb` y `Presentacion2.ipynb`: análisis visual y métodos de ML.
-   * 🌲 `RandomForest.ipynb`: modelo supervisado aplicado.
+   * 📘 `Estadistica_ROIs.ipynb`: ROI statistics.
+   * 📙 `Presentacion1.ipynb` and `Presentacion2.ipynb`: visual analysis and ML methods.
+   * 🌲 `RandomForest.ipynb`: applied supervised model.
 
-4. **Inspeccionar datos geoespaciales**
+4. **Inspect the geospatial data**
 
-   * La carpeta `Poligonos` (con sus subcarpetas `Norte`, `Sur` y `Entrenamiento_2022`) contiene todos los polígonos de entrada del algoritmo.
-   * 🔧 Se pueden modificar las **Regiones de Interés (ROIs)** para estudiar nuevos sitios.
-
----
-
-## 📝 Cosas por Hacer
-
-* 🌐 Traducir todo el repositorio al inglés.
-* 🗺️ Recuperar o volver a trazar `Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp` (ROIs de entrenamiento de Los Molinos, dibujadas a mano, que usa `RandomForest.ipynb`).
-* 🛰️ Definir y generar `ImagenesSentinel/stack2022norte-2.tif`, que usa `Presentacion2.ipynb` (zona='norte-2') y todavía no está disponible.
-* 📦 Sumar `kPOD`, `dictances` y `cmasher` a `dependencies.yml`.
-* 📖 Documentar cada notebook con descripciones claras.
+   * The `Poligonos` folder (with its `Norte`, `Sur`, and `Entrenamiento_2022` subfolders) contains all the algorithm's input polygons.
+   * 🔧 The **Regions of Interest (ROIs)** can be modified to study new sites.
 
 ---
 
-## 👨‍🔬 Créditos
+## 📝 To Do
 
-Desarrollado por **Javier Arellana**
+* 🗺️ Recover or re-trace `Poligonos/Entrenamiento_2022/TrainingMolinosPoligonos.shp` (hand-drawn training ROIs for Los Molinos, used by `RandomForest.ipynb`).
+* 🛰️ Define and generate `ImagenesSentinel/stack2022norte-2.tif`, used by `Presentacion2.ipynb` (zona='norte-2') and not yet available.
+* 📦 Add `kPOD`, `dictances`, and `cmasher` to `dependencies.yml`.
+* 📖 Document each notebook with clear descriptions.
 
-* Instituto de Astronomía y Física del Espacio (IAFE), **UBA – CONICET**
-* Departamento de Física, Facultad de Ciencias Exactas y Naturales, **Universidad de Buenos Aires**
+---
+
+## 👨‍🔬 Credits
+
+Developed by **Javier Arellana**
+
+* Institute of Astronomy and Space Physics (IAFE), **UBA – CONICET**
+* Department of Physics, School of Exact and Natural Sciences, **University of Buenos Aires**
 
 ---
